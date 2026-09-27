@@ -9,6 +9,17 @@ if 'imghdr' not in sys.modules:
     imghdr_mock = types.ModuleType('imghdr')
     imghdr_mock.what = lambda file, h=None: 'jpeg'
     sys.modules['imghdr'] = imghdr_mock
+import os
+import sys
+import types
+import socket
+import webbrowser
+
+# ================= PYTHON 3.13+ COMPATIBILITY FIX =================
+if 'imghdr' not in sys.modules:
+    imghdr_mock = types.ModuleType('imghdr')
+    imghdr_mock.what = lambda file, h=None: 'jpeg'
+    sys.modules['imghdr'] = imghdr_mock
 
 # ================= AUTO-INSTALLER FOR REQUIRED LIBRARIES =================
 try:
@@ -41,8 +52,8 @@ from telethon.network import ConnectionTcpIntermediate, ConnectionTcpAbridged
 logging.getLogger('telethon').setLevel(logging.CRITICAL)
 init(autoreset=True)
 
-# ================= GITHUB PROXY URL =================
-GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg88/wp_tg/main/proxies.txt"
+# ================= 🔴 GITHUB PROXY URL (UPDATED) 🔴 =================
+GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg880-sketch/wp_tg/main/proxies.txt"
 
 # Default API Key
 DEFAULT_API_ID = 25762761
@@ -55,9 +66,7 @@ AUTO_NAMES_LIST = [
     "Fox", "Rex", "Ash", "Cid", "Dax", "Gus", "Kip", "Lex", "Ned", "Paz", "Taj", "Van", "Wes", "Zed",
     "John", "David", "Michael", "James", "Robert", "William", "Mary", "Patricia", "Jennifer", "Linda", 
     "Elizabeth", "Richard", "Joseph", "Charles", "Thomas", "Christopher", "Daniel", "Matthew", "Anthony", 
-    "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Kenneth", "Kevin", "Brian", "George", "Edward", 
     "Muhammad", "Ahmed", "Ali", "Omar", "Abdullah", "Tariq", "Khalid", "Hassan", "Hussein", "Ibrahim", 
-    "Youssef", "Bilal", "Zaid", "Mahmoud", "Mustafa", "Hamza", "Karim", "Sami", "Nabil", "Majed", "Ramy", 
     "Adam", "Hawwa", "Maryam", "Asiya", "Khadija", "Aisha", "Fatima", "Zainab", "Ruqayyah", "Umm Kulthum",
     "Zaynab", "Zayn", "Zayd", "Qais", "Saad", "Fahd", "Badr", "Jamal", "Kamal", "Tariq", "Raed", "Anwar"
 ]
@@ -71,8 +80,6 @@ DESKTOP_DEVICES = [
     {"device_model": "Windows 8.1 x64", "system_version": "6.3.9600", "app_version": "4.7.1 x64"},
     {"device_model": "Linux Mint 21", "system_version": "Linux 5.15", "app_version": "4.9.2 x64"},
     {"device_model": "iMac 27-inch", "system_version": "macOS 12.6", "app_version": "4.6.3 x64"},
-    {"device_model": "Windows 10 x64", "system_version": "10.0.18363", "app_version": "4.5.3 x64"},
-    {"device_model": "MacBook Air M2", "system_version": "macOS 14.1", "app_version": "4.13.0 arm64"},
     {"device_model": "Fedora 38", "system_version": "Linux 6.4", "app_version": "4.11.0 x64"},
     {"device_model": "Windows 11 x64", "system_version": "10.0.22000", "app_version": "4.10.5 x64"}
 ]
