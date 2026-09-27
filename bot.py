@@ -9,17 +9,6 @@ if 'imghdr' not in sys.modules:
     imghdr_mock = types.ModuleType('imghdr')
     imghdr_mock.what = lambda file, h=None: 'jpeg'
     sys.modules['imghdr'] = imghdr_mock
-import os
-import sys
-import types
-import socket
-import webbrowser
-
-# ================= PYTHON 3.13+ COMPATIBILITY FIX =================
-if 'imghdr' not in sys.modules:
-    imghdr_mock = types.ModuleType('imghdr')
-    imghdr_mock.what = lambda file, h=None: 'jpeg'
-    sys.modules['imghdr'] = imghdr_mock
 
 # ================= AUTO-INSTALLER FOR REQUIRED LIBRARIES =================
 try:
@@ -58,6 +47,19 @@ GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg880-sketch/wp_tg/main/
 # Default API Key
 DEFAULT_API_ID = 25762761
 DEFAULT_API_HASH = "f6712ac15fa56c713451eede724261eb"
+
+# ================= 📁 BASE DIRECTORY FOR PHONE STORAGE 📁 =================
+# এটি আপনার ফোনের ইন্টারনাল স্টোরেজের ফোল্ডার পাথ
+BASE_DIR = "/storage/emulated/0/termux"
+
+# ফোল্ডারটি না থাকলে তৈরি করে নিবে (যদি স্টোরেজ পারমিশন থাকে)
+try:
+    os.makedirs(BASE_DIR, exist_ok=True)
+except PermissionError:
+    print(f"\n\033[1;31m[!] PERMISSION ERROR: Please run 'termux-setup-storage' first to allow file access!\033[0m\n")
+    # Fallback if permission is denied
+    BASE_DIR = "termux_sessions"
+    os.makedirs(BASE_DIR, exist_ok=True)
 
 # ================= AUTO NAMES LIST =================
 AUTO_NAMES_LIST = [
@@ -211,6 +213,7 @@ def show_banner():
     print(f"{CYAN}[12] {GREEN}🔥 {RED}Kill Session (Self Logout){RESET}")
     print(f"{CYAN} [0] {GREEN}🚨 {RED}Exit Tools{RESET}")
     print(CYAN + "════════════════════════════════════════════════════" + RESET)
+    print(f"{WHITE}[*] Phone Storage Path Active: {GREEN}{BASE_DIR}{RESET}")
 
 # ================= UNIVERSAL PROXY PARSER =================
 def universal_proxy_parser(raw_text):
@@ -287,7 +290,7 @@ def load_api_keys(file_path="api_keys.txt"):
     return api_list if api_list else [(DEFAULT_API_ID, DEFAULT_API_HASH)]
 
 def move_to_corrupt(session_file_path):
-    corrupt_dir = "Corrupt_Sessions"
+    corrupt_dir = os.path.join(BASE_DIR, "Corrupt_Sessions")
     os.makedirs(corrupt_dir, exist_ok=True)
     try:
         dest_path = os.path.join(corrupt_dir, os.path.basename(session_file_path))
@@ -442,11 +445,15 @@ async def upload_and_check_api_keys():
 # ================= 1: CREATE SESSION AND JSON =================
 async def create_session():
     api_keys = load_api_keys("api_keys.txt")
-    net_info = get_current_network_info()
     print(f"\n{CYAN}--- NEW SESSION CREATOR ---{RESET}")
-    folder = input(f"{YELLOW}Enter Folder Name to save files: {RESET}").strip()
-    folder = folder if folder else "sessions"
+    folder_input = input(f"{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder_name = folder_input if folder_input else "sessions"
+    
+    # Save directly to Phone Storage BASE_DIR
+    folder = os.path.join(BASE_DIR, folder_name)
     os.makedirs(folder, exist_ok=True)
+    
+    print(f"{WHITE}[*] Files will be saved in: {GREEN}{folder}{RESET}")
     two_fa_input = input(f"{YELLOW}Enter 2FA Password to save in JSON (Type 'N' if none): {RESET}").strip()
     two_fa_pass = "" if two_fa_input.upper() == 'N' else two_fa_input
 
@@ -473,7 +480,7 @@ async def create_session():
                         pwd = input(f"{YELLOW}Enter 2FA Login Password: {RESET}").strip()
                         await client.sign_in(password=pwd)
                         two_fa_pass = pwd 
-                    print(f"{GREEN}[✔] Session created successfully: {session_name}.session{RESET}")
+                    print(f"{GREEN}[✔] Session created successfully in {folder_name}!{RESET}")
                     me = await client.get_me()
                     json_data = create_expert_json(session_name, session_name, me.id, me.first_name, me.last_name, me.username, api_pair[0], api_pair[1], two_fa_pass, chosen_device)
                     with open(os.path.join(folder, f"{session_name}.json"), "w", encoding="utf-8") as f: json.dump(json_data, f, indent=4, ensure_ascii=False)
@@ -587,7 +594,7 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
             except Exception: pass
 
     if account_success or is_already_dead:
-        processed_folder = "Processed_Sessions"
+        processed_folder = os.path.join(BASE_DIR, "Processed_Sessions")
         os.makedirs(processed_folder, exist_ok=True)
         try:
             if os.path.exists(session_file): shutil.move(session_file, os.path.join(processed_folder, os.path.basename(session_file)))
@@ -637,15 +644,17 @@ async def breakup_session():
     api_keys = load_api_keys("api_keys.txt")
     default_ip = get_current_network_info()['ip']
 
-    folder = input(f"\n{YELLOW}Enter Target Folder Name: {RESET}").strip()
+    folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder = os.path.join(BASE_DIR, folder_input)
+    
     if not os.path.exists(folder):
-        print(f"{RED}[✖] Folder not found!{RESET}")
+        print(f"{RED}[✖] Folder not found at {folder}!{RESET}")
         return
 
     session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
     total_files = len(session_files)
     if total_files == 0:
-        print(f"{RED}[✖] No .session files found!{RESET}")
+        print(f"{RED}[✖] No .session files found in {folder}!{RESET}")
         return
 
     pwd_input = input(f"{YELLOW}Enter global 2FA Password (type 'N' to skip): {RESET}").strip()
@@ -654,10 +663,13 @@ async def breakup_session():
     w_input = input(f"{YELLOW}Worker Count [Recommended: 20-40]: {RESET}").strip()
     concurrency = int(w_input) if w_input.isdigit() and 1 <= int(w_input) <= 60 else 30
 
-    target_folder = "breakup_session"
+    target_folder = os.path.join(BASE_DIR, "breakup_session")
     os.makedirs(target_folder, exist_ok=True)
 
     print(f"\n{CYAN}⚡ Fast Breakup Started (No Auto-Logout)...{RESET}")
+    print(f"{WHITE}[*] Processing from: {GREEN}{folder}{RESET}")
+    print(f"{WHITE}[*] Saving to: {GREEN}{target_folder}{RESET}")
+    
     queue = asyncio.Queue()
     for idx, s_file in enumerate(session_files, start=1): queue.put_nowait((idx, s_file))
 
@@ -769,14 +781,18 @@ async def run_2fa_manager():
     mode = input(f"\n{YELLOW}[#] Select Action: {RESET}").strip()
     if mode not in ["1", "2", "3"]: return
 
-    folder = input(f"\n{YELLOW}Enter Folder Name: {RESET}").strip()
-    if not os.path.exists(folder): return
+    folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder = os.path.join(BASE_DIR, folder_input)
+    if not os.path.exists(folder): 
+        print(f"{RED}[✖] Folder not found at {folder}!{RESET}")
+        return
+        
     session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
     total_files = len(session_files)
     if total_files == 0: return
 
     old_pwd, new_pwd = "", ""
-    reset_folder = "Reset_Pending_Sessions"
+    reset_folder = os.path.join(BASE_DIR, "Reset_Pending_Sessions")
     if mode == "1": old_pwd = input(f"{YELLOW}Enter Current 2FA Password: {RESET}").strip()
     elif mode == "2":
         old_pwd = input(f"{YELLOW}Enter Current 2FA (leave empty if none): {RESET}").strip()
@@ -789,7 +805,7 @@ async def run_2fa_manager():
 
     stats = {'success': 0, 'pending': 0, 'error': 0}
     results_buffer = {}
-    print(f"\n{CYAN}⚡ Starting 2FA Manager...{RESET}")
+    print(f"\n{CYAN}⚡ Starting 2FA Manager from: {folder}{RESET}")
     workers = [asyncio.create_task(two_fa_worker(queue, total_files, api_keys, mode, old_pwd, new_pwd, reset_folder, stats, results_buffer)) for _ in range(min(15, total_files))]
     printer_task = asyncio.create_task(ordered_output_printer(results_buffer, total_files))
 
@@ -873,18 +889,25 @@ async def check_queue_worker(queue, total_count, api_keys, default_ip, results_b
 async def check_folder_sessions():
     api_keys = load_api_keys("api_keys.txt")
     default_ip = get_current_network_info()['ip']
-    folder = input(f"\n{YELLOW}Enter Folder Name: {RESET}").strip()
-    if not os.path.exists(folder): return
+    
+    folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder = os.path.join(BASE_DIR, folder_input)
+    
+    if not os.path.exists(folder):
+        print(f"{RED}[✖] Folder not found at {folder}!{RESET}")
+        return
+        
     session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
     total_files = len(session_files)
     if total_files == 0: return
 
     change_name_opt = input(f"{YELLOW}Randomly change account names? (Y/N): {RESET}").strip().upper()
     names_list = AUTO_NAMES_LIST if change_name_opt == 'Y' else []
-    frozen_folder = "Frozen_Sessions"
+    
+    frozen_folder = os.path.join(BASE_DIR, "Frozen_Sessions")
     if names_list: os.makedirs(frozen_folder, exist_ok=True)
 
-    print(f"\n{CYAN}Starting Session Check...{RESET}")
+    print(f"\n{CYAN}Starting Session Check from {folder}...{RESET}")
     queue = asyncio.Queue()
     for idx, s_file in enumerate(session_files, start=1): queue.put_nowait((idx, s_file))
     stats = {'alive': 0, 'corrupt': 0, 'frozen': 0, 'error': 0}
@@ -906,6 +929,12 @@ async def run_kill_session(): print(f"\n{YELLOW}[!] Kill Session feature is comi
 
 def main():
     startup_channel_prompt()
+    
+    # Check Storage Permission Warning at Startup
+    if not os.path.exists(BASE_DIR) and "termux" in BASE_DIR:
+        print(f"\n\033[1;31m[!] WARNING: Script cannot access phone storage!\033[0m")
+        print(f"\033[1;33mPlease exit and run 'termux-setup-storage' in your terminal.\033[0m\n")
+        
     while True:
         show_banner()
         choice = input(f"\n{YELLOW}[#] Select Option: {RESET}").strip().upper()
