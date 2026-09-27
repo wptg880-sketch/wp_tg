@@ -44,7 +44,7 @@ init(autoreset=True)
 # ================= 🔴 আপনার গিটহাব প্রক্সি লিংক এখানে দিন 🔴 =================
 # গিটহাবে আপনার proxies.txt ফাইলটি ওপেন করে "Raw" বাটনে ক্লিক করুন এবং সেই লিংকটি এখানে দিন।
 # যদি লিংক ফাঁকা থাকে, তবে এটি লোকাল proxies.txt ব্যবহার করবে।
-GITHUB_PROXY_URL = "" 
+GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg88/wp_tg/main/proxies.txt" 
 # উদাহরণ: GITHUB_PROXY_URL = "https://raw.githubusercontent.com/আপনার_ইউজারনেম/TeleChecker/main/proxies.txt"
 
 # ডিফল্ট API Key
