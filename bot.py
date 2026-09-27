@@ -838,6 +838,119 @@ async def run_2fa_manager():
     else:
         print(f"\n{GREEN}✔ Completed! Success: {stats['success']} | Errors: {stats['error']}{RESET}")
 
+# ================= 9: KILL SESSION (SELF LOGOUT) =================
+async def kill_single_session_task(session_file, idx, total_files, api_keys, proxies, killed_folder, stats, results_buffer):
+    s_name = os.path.splitext(os.path.basename(session_file))[0]
+    session_base = session_file[:-8] if session_file.endswith(".session") else session_file
+    
+    out = []
+    api_pair = random.choice(api_keys)
+    chosen_proxy = random.choice(proxies) if proxies else None
+    timeout_sec = 8.0 if chosen_proxy else 10.0
+
+    client = create_telethon_client(session_base, api_pair, timeout=timeout_sec, proxy_info=chosen_proxy)
+
+    is_already_dead = False
+    kill_success = False
+
+    try:
+        await asyncio.sleep(random.uniform(0.5, 2.0))
+        async with get_connect_semaphore(20):
+            await asyncio.wait_for(client.connect(), timeout=timeout_sec)
+
+        if not await client.is_user_authorized():
+            is_already_dead = True
+            out.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> Already Logged Out / Dead{RESET}")
+        else:
+            # শুধুমাত্র এই বর্তমান সেশনটিকে লগআউট করবে, অন্য ডিভাইস নয়
+            await asyncio.wait_for(client(functions.auth.LogOutRequest()), timeout=timeout_sec)
+            kill_success = True
+            out.append(f"{GREEN}[{idx}/{total_files}] {s_name} -> Successfully Logged Out (Killed)! [API: {api_pair[0]}]{RESET}")
+
+    except (errors.AuthKeyUnregisteredError, errors.AuthKeyDuplicatedError, 
+            errors.AuthKeyInvalidError, errors.SessionExpiredError, 
+            errors.SessionRevokedError, errors.UserDeactivatedBanError, 
+            errors.UserDeactivatedError):
+        is_already_dead = True
+        out.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> Already Logged Out / Dead (Auth Invalid){RESET}")
+    except Exception as ex:
+        err_msg = str(ex).strip()[:40] if str(ex).strip() else ex.__class__.__name__
+        out.append(f"{RED}[{idx}/{total_files}] {s_name} -> Kill Failed: {err_msg}{RESET}")
+    finally:
+        try:
+            await client.disconnect()
+        except Exception: pass
+
+    if kill_success or is_already_dead:
+        if kill_success: stats['killed'] += 1
+        else: stats['already_dead'] += 1
+        move_session_files(session_file, killed_folder)
+    else:
+        stats['error'] += 1
+
+    results_buffer[idx] = out
+
+async def kill_session_worker(queue, total_files, api_keys, proxies, killed_folder, stats, results_buffer):
+    while True:
+        try: item = queue.get_nowait()
+        except asyncio.QueueEmpty: break
+        idx, session_file = item
+        await kill_single_session_task(session_file, idx, total_files, api_keys, proxies, killed_folder, stats, results_buffer)
+        queue.task_done()
+
+async def run_kill_session():
+    clear_screen()
+    print(CYAN + "╔══════════════════════════════════════════════════╗")
+    print(CYAN + "║" + MAGENTA + "         K I L L   S E S S I O N   (L O G O U T)  " + CYAN + "║")
+    print(CYAN + "╚══════════════════════════════════════════════════╝")
+    
+    print(f"\n{WHITE}Select Network Mode:{RESET}")
+    print(f"{CYAN}[1] Local IP / Direct Internet{RESET}")
+    print(f"{CYAN}[2] Use Proxies from GitHub{RESET}")
+    net_mode = input(f"{YELLOW}[#] Option: {RESET}").strip()
+    
+    proxies = []
+    if net_mode == "2":
+        proxies = load_proxies("proxies.txt")
+        if not proxies:
+            print(f"{RED}[✖] No proxies found in proxies.txt!{RESET}")
+            return
+
+    folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder = os.path.join(BASE_DIR, folder_input)
+    if not os.path.exists(folder):
+        print(f"{RED}[✖] Folder '{folder_input}' does not exist in {BASE_DIR}!{RESET}")
+        return
+
+    session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
+    total_files = len(session_files)
+    if total_files == 0:
+        print(f"{RED}[✖] No sessions found!{RESET}")
+        return
+
+    killed_folder = "Killed_Sessions"
+    api_keys = get_github_apis()
+
+    w_input = input(f"\n{YELLOW}Worker Count [Recommended: 15-30]: {RESET}").strip()
+    concurrency = int(w_input) if w_input.isdigit() and 1 <= int(w_input) <= 50 else 20
+
+    print(f"\n{CYAN}🔥 Starting Self-Logout (Kill) for {total_files} accounts...{RESET}\n")
+
+    queue = asyncio.Queue()
+    for idx, s_file in enumerate(session_files, start=1): queue.put_nowait((idx, s_file))
+
+    stats = {'killed': 0, 'already_dead': 0, 'error': 0}
+    results_buffer = {}
+
+    workers = [asyncio.create_task(kill_session_worker(queue, total_files, api_keys, proxies, killed_folder, stats, results_buffer)) for _ in range(min(concurrency, total_files))]
+    printer_task = asyncio.create_task(ordered_output_printer(results_buffer, total_files))
+
+    await queue.join()
+    await printer_task
+
+    print(CYAN + "=" * 58)
+    print(f"\n{GREEN}✔ Completed! Killed: {stats['killed']} | Already Dead: {stats['already_dead']} | Errors: {stats['error']}{RESET}")
+
 # ================= OTHER MODULES (CREATE, PROXY, CLEAN, KILL) =================
 def api_keys_info():
     clear_screen()
@@ -905,6 +1018,7 @@ def main():
         elif choice in ["5"]: asyncio.run(check_folder_sessions())
         elif choice in ["6"]: asyncio.run(breakup_session())
         elif choice in ["7"]: asyncio.run(run_2fa_manager())
+        elif choice in ["9"]: asyncio.run(run_kill_session())
         elif choice in ["0", "E", "EXIT"]:
             print(f"\n{RED}[!] Exiting Tools. Goodbye!{RESET}\n")
             sys.exit(0)
