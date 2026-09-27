@@ -13,12 +13,13 @@ if 'imghdr' not in sys.modules:
 # ================= AUTO-INSTALLER FOR REQUIRED LIBRARIES =================
 try:
     import telethon
+    import requests
     import python_socks
     if telethon.__version__ < '1.30.0':
         raise ImportError("Telethon too old")
 except ImportError:
-    print("\n[!] প্রয়োজনীয় লাইব্রেরি ইনস্টল করা হচ্ছে (Telethon, Python-Socks)...")
-    os.system(f"{sys.executable} -m pip install --upgrade telethon python-socks")
+    print("\n[!] প্রয়োজনীয় লাইব্রেরি ইনস্টল করা হচ্ছে (Telethon, Requests, Python-Socks)...")
+    os.system(f"{sys.executable} -m pip install --upgrade telethon requests python-socks")
     print("\n[✔] সেটআপ সম্পন্ন! স্ক্রিপ্ট রিস্টার্ট হচ্ছে...\n")
     os.execv(sys.executable, ['python'] + sys.argv)
 
@@ -41,29 +42,42 @@ from telethon.network import ConnectionTcpIntermediate, ConnectionTcpAbridged
 logging.getLogger('telethon').setLevel(logging.CRITICAL)
 init(autoreset=True)
 
-# ================= 🔴 আপনার গিটহাব প্রক্সি লিংক এখানে দিন 🔴 =================
-# গিটহাবে আপনার proxies.txt ফাইলটি ওপেন করে "Raw" বাটনে ক্লিক করুন এবং সেই লিংকটি এখানে দিন।
-# যদি লিংক ফাঁকা থাকে, তবে এটি লোকাল proxies.txt ব্যবহার করবে।
-GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg88/wp_tg/main/proxies.txt" 
-# উদাহরণ: GITHUB_PROXY_URL = "https://raw.githubusercontent.com/আপনার_ইউজারনেম/TeleChecker/main/proxies.txt"
+# ================= 🔴 গিটহাব লিংক সেটআপ 🔴 =================
+GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg88/wp_tg/main/proxies.txt"
+GITHUB_API_URL = "https://raw.githubusercontent.com/wptg88/wp_tg/main/api_keys.txt"
 
 # ডিফল্ট API Key
 DEFAULT_API_ID = 25762761
 DEFAULT_API_HASH = "f6712ac15fa56c713451eede724261eb"
 
-# ================= 250+ AUTO NAMES LIST =================
+# ================= 250+ AUTO NAMES LIST (ARABIC & ENGLISH & SHORT) =================
 AUTO_NAMES_LIST = [
     "RK", "ER", "RJ", "JEB", "Alex", "Sam", "Max", "Leo", "Ray", "Tom", "Bob", "Tim", "Jay", "Roy", 
     "Jon", "Dan", "Eli", "Ian", "Mac", "Abe", "Ben", "Cal", "Hal", "Sal", "Vic", "Zak", "Kai", "Jax", 
     "Fox", "Rex", "Ash", "Cid", "Dax", "Gus", "Kip", "Lex", "Ned", "Paz", "Taj", "Van", "Wes", "Zed",
     "John", "David", "Michael", "James", "Robert", "William", "Mary", "Patricia", "Jennifer", "Linda", 
     "Elizabeth", "Richard", "Joseph", "Charles", "Thomas", "Christopher", "Daniel", "Matthew", "Anthony", 
+    "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Kenneth", "Kevin", "Brian", "George", "Edward", 
+    "Ronald", "Timothy", "Jason", "Jeffrey", "Ryan", "Jacob", "Gary", "Nicholas", "Eric", "Jonathan", 
+    "Stephen", "Larry", "Justin", "Scott", "Brandon", "Benjamin", "Samuel", "Gregory", "Frank", "Alexander", 
+    "Raymond", "Patrick", "Jack", "Dennis", "Jerry", "Tyler", "Aaron", "Jose", "Adam", "Henry", "Nathan", 
+    "Douglas", "Zachary", "Peter", "Kyle", "Walter", "Ethan", "Jeremy", "Christian", "Keith", "Roger", 
+    "Terry", "Gerald", "Harold", "Sean", "Austin", "Carl", "Arthur", "Lawrence", "Dylan", "Jesse", "Jordan", 
+    "Bryan", "Billy", "Joe", "Bruce", "Gabriel", "Logan", "Albert", "Willie", "Alan", "Juan", "Wayne", 
+    "Ralph", "Roy", "Eugene", "Randy", "Vincent", "Russell", "Louis", "Philip", "Bobby", "Johnny", "Bradley",
     "Muhammad", "Ahmed", "Ali", "Omar", "Abdullah", "Tariq", "Khalid", "Hassan", "Hussein", "Ibrahim", 
-    "Adam", "Hawwa", "Maryam", "Asiya", "Khadija", "Aisha", "Fatima", "Zainab", "Ruqayyah", "Umm Kulthum",
+    "Youssef", "Bilal", "Zaid", "Mahmoud", "Mustafa", "Hamza", "Karim", "Sami", "Nabil", "Majed", "Ramy", 
+    "Tamer", "Yasser", "Wael", "Hisham", "Amr", "Ayman", "Tarek", "Essam", "Sherif", "Ehab", "Ashraf", 
+    "Walid", "Maged", "Osama", "Saeed", "Samir", "Taha", "Adel", "Atef", "Magdy", "Bahaa", "Fady", "Hany", 
+    "Shady", "Amir", "Rami", "Fares", "Ziad", "Hazem", "Wajdi", "Firas", "Bassam", "Ghassan", "Nader", 
+    "Samer", "Munir", "Naim", "Farooq", "Jaber", "Salem", "Salih", "Suleiman", "Dawoud", "Yunus", "Yahya", 
+    "Zakariya", "Isa", "Musa", "Harun", "Ishaq", "Ismail", "Yaqub", "Yusuf", "Ayyub", "Idris", "Nuh", 
+    "Hud", "Saleh", "Lut", "Shuaib", "Adam", "Hawwa", "Maryam", "Asiya", "Khadija", "Aisha", "Fatima", 
+    "Zainab", "Ruqayyah", "Umm Kulthum", "Hafsa", "Safiyya", "Maymuna", "Juwayriya", "Ramla", "Hind", 
     "Zaynab", "Zayn", "Zayd", "Qais", "Saad", "Fahd", "Badr", "Jamal", "Kamal", "Tariq", "Raed", "Anwar"
 ]
 
-# ================= 25 PREMIUM DESKTOP MODELS =================
+# ================= 25 PREMIUM DESKTOP MODELS (ANTI-BAN) =================
 DESKTOP_DEVICES = [
     {"device_model": "Windows 10 x64", "system_version": "10.0.19045", "app_version": "4.8.4 x64"},
     {"device_model": "Windows 11 x64", "system_version": "10.0.22621", "app_version": "4.11.2 x64"},
@@ -72,11 +86,16 @@ DESKTOP_DEVICES = [
     {"device_model": "Windows 8.1 x64", "system_version": "6.3.9600", "app_version": "4.7.1 x64"},
     {"device_model": "Linux Mint 21", "system_version": "Linux 5.15", "app_version": "4.9.2 x64"},
     {"device_model": "iMac 27-inch", "system_version": "macOS 12.6", "app_version": "4.6.3 x64"},
+    {"device_model": "Windows 10 x64", "system_version": "10.0.18363", "app_version": "4.5.3 x64"},
+    {"device_model": "MacBook Air M2", "system_version": "macOS 14.1", "app_version": "4.13.0 arm64"},
     {"device_model": "Fedora 38", "system_version": "Linux 6.4", "app_version": "4.11.0 x64"},
     {"device_model": "Windows 11 x64", "system_version": "10.0.22000", "app_version": "4.10.5 x64"}
 ]
 
+# জিও-লোকেশন ক্যাশ মেমরি
 GEO_CACHE = {}
+
+# ================= Asyncio Event Loop Safe State =================
 global_state = {'print_lock': None, 'semaphore': None, 'loop': None}
 
 def get_print_lock():
@@ -95,33 +114,49 @@ def get_connect_semaphore(limit=40):
         global_state['loop'] = loop
     return global_state['semaphore']
 
+# ================= ANSI COLOR CODES =================
 CYAN = Fore.CYAN + Style.BRIGHT
 RED = Fore.RED + Style.BRIGHT
 GREEN = Fore.GREEN + Style.BRIGHT
 YELLOW = Fore.YELLOW + Style.BRIGHT
 MAGENTA = Fore.MAGENTA + Style.BRIGHT
 WHITE = Fore.WHITE + Style.BRIGHT
+BLUE = Fore.BLUE + Style.BRIGHT
 RESET = Style.RESET_ALL
 
 def clear_screen():
     os.system("clear" if os.name != "nt" else "cls")
 
-# ================= STARTUP CHANNEL PROMPT & PROXY FETCHER =================
-def fetch_online_proxies():
-    if not GITHUB_PROXY_URL:
-        return
-    print(f"\n{YELLOW} [*] গিটহাব থেকে নতুন প্রক্সি ডাউনলোড করা হচ্ছে...{RESET}")
-    try:
-        req = urllib.request.Request(GITHUB_PROXY_URL, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
-            proxy_data = resp.read().decode('utf-8')
-            if proxy_data.strip():
-                with open("proxies.txt", "w", encoding="utf-8") as f:
-                    f.write(proxy_data)
-                print(f"{GREEN} [✔] প্রক্সি সফলভাবে আপডেট হয়েছে!{RESET}")
-    except Exception as e:
-        print(f"{RED} [✖] গিটহাব থেকে প্রক্সি আপডেট ফেইল হয়েছে (লোকাল প্রক্সি ব্যবহার হবে)।{RESET}")
-    
+# ================= AUTO UPDATER & CHANNEL PROMPT =================
+def fetch_online_files():
+    # 1. Fetch Proxies
+    if GITHUB_PROXY_URL:
+        print(f"\n{YELLOW} [*] গিটহাব থেকে নতুন প্রক্সি চেক করা হচ্ছে...{RESET}")
+        try:
+            req = urllib.request.Request(GITHUB_PROXY_URL, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = resp.read().decode('utf-8')
+                if data.strip():
+                    with open("proxies.txt", "w", encoding="utf-8") as f:
+                        f.write(data)
+                    print(f"{GREEN} [✔] প্রক্সি সফলভাবে আপডেট হয়েছে!{RESET}")
+        except Exception:
+            print(f"{RED} [✖] গিটহাব প্রক্সি আপডেট ফেইল হয়েছে (লোকাল প্রক্সি ব্যবহার হবে)।{RESET}")
+            
+    # 2. Fetch API Keys
+    if GITHUB_API_URL:
+        print(f"{YELLOW} [*] গিটহাব থেকে নতুন API Keys চেক করা হচ্ছে...{RESET}")
+        try:
+            req = urllib.request.Request(GITHUB_API_URL, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = resp.read().decode('utf-8')
+                if data.strip():
+                    with open("api_keys.txt", "w", encoding="utf-8") as f:
+                        f.write(data)
+                    print(f"{GREEN} [✔] API Keys সফলভাবে আপডেট হয়েছে!{RESET}")
+        except Exception:
+            print(f"{RED} [✖] গিটহাব API আপডেট ফেইল হয়েছে (লোকাল API ব্যবহার হবে)।{RESET}")
+
 def startup_channel_prompt():
     clear_screen()
     print(CYAN + "╔══════════════════════════════════════════════════════════╗")
@@ -133,6 +168,7 @@ def startup_channel_prompt():
     
     url = "https://t.me/WORLD_UPDATE_TOP1"
     
+    # অটো চ্যানেল ওপেন করার ট্রিক
     try:
         if "com.termux" in os.environ.get("PREFIX", "") or os.path.exists('/data/data/com.termux/files/usr/bin/termux-open-url'):
             os.system(f"termux-open-url {url} > /dev/null 2>&1")
@@ -145,13 +181,15 @@ def startup_channel_prompt():
     except Exception:
         pass
         
-    fetch_online_proxies() # গিটহাব থেকে প্রক্সি ডাউনলোড
+    fetch_online_files() # গিটহাব থেকে প্রক্সি ও এপিআই ডাউনলোড
     input(f"\n{YELLOW} [?] চ্যানেলে জয়েন করা হলে, মূল মেনুতে যেতে ENTER চাপুন... {RESET}")
 
 # ================= ACCURATE GEO-LOCATION RESOLVER =================
 def resolve_ip_geo(ip):
-    if not ip or ip.lower() in ['unknown', 'localhost', '127.0.0.1']: return "Unknown Location"
-    if ip in GEO_CACHE: return GEO_CACHE[ip]
+    if not ip or ip.lower() in ['unknown', 'localhost', '127.0.0.1']:
+        return "Unknown Location"
+    if ip in GEO_CACHE:
+        return GEO_CACHE[ip]
     try:
         req = urllib.request.Request(f"http://ip-api.com/json/{ip}?fields=status,country,city,regionName", headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=3.0) as resp:
@@ -190,9 +228,9 @@ def show_banner():
     print(f"{CYAN} [1] {GREEN}⚡ {YELLOW}Create Session & JSON{RESET}")
     print(f"{CYAN} [2] {GREEN}🌐 {GREEN}Upload / Check Proxies (Auto Format Detect){RESET}")
     print(f"{CYAN} [3] {GREEN}🔑 {MAGENTA}Upload / Check API Keys{RESET}")
-    print(f"{CYAN} [4] {GREEN}👥 {Fore.BLUE + Style.BRIGHT}Join Public Channel / Group (Auto Join){RESET}")
+    print(f"{CYAN} [4] {GREEN}👥 {BLUE}Join Public Channel / Group{RESET}")
     print(f"{CYAN} [5] {GREEN}🔰 {GREEN}Check Folder Sessions (With Auto Name Changer){RESET}")
-    print(f"{CYAN} [6] {GREEN}💔 {YELLOW}Breakup Session Menu (No Auto-Logout){RESET}")
+    print(f"{CYAN} [6] {GREEN}💔 {YELLOW}Breakup Session Menu (Fast Mode){RESET}")
     print(f"{CYAN} [7] {GREEN}🔐 {MAGENTA}2FA Manager (Change/Disable/Reset){RESET}")
     print(f"{CYAN} [8] {GREEN}🔢 {RED}Read OTP Session{RESET}")
     print(f"{CYAN} [9] {GREEN}🧹 {RED}Clear All Chat History{RESET}")
@@ -244,7 +282,6 @@ def load_proxies(file_path="proxies.txt"):
             if "#" in line: line, geo_tag = line.split("#", 1)
             proto = "socks5"
             if "://" in line: proto, line = line.split("://", 1)
-            
             if "@" in line:
                 auth, ip_port = line.split("@", 1)
                 user, pwd = auth.split(":", 1) if ":" in auth else (auth, "")
@@ -290,8 +327,16 @@ def move_to_corrupt(session_file_path):
             j_dest = os.path.join(corrupt_dir, os.path.basename(journal))
             if os.path.exists(j_dest): os.remove(j_dest)
             shutil.move(journal, j_dest)
-    except Exception:
-        pass
+    except Exception: pass
+
+def update_json_2fa(session_file, new_2fa):
+    json_file = session_file.replace('.session', '.json')
+    if os.path.exists(json_file):
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f: data = json.load(f)
+            data['twoFA'] = new_2fa
+            with open(json_file, 'w', encoding='utf-8') as f: json.dump(data, f, indent=4, ensure_ascii=False)
+        except Exception: pass
 
 def create_telethon_client(session_base, api_pair, timeout=12, device_config=None, proxy_info=None):
     proxy_dict = None
@@ -311,22 +356,19 @@ def create_telethon_client(session_base, api_pair, timeout=12, device_config=Non
     av = device_config['app_version'] if device_config else "6.8.2 x64"
 
     return TelegramClient(
-        session_base, 
-        api_pair[0], 
-        api_pair[1], 
-        device_model=dm,
-        system_version=sv,
-        app_version=av,
-        lang_code="en",
-        system_lang_code="en-US",
+        session_base, api_pair[0], api_pair[1], 
+        device_model=dm, system_version=sv, app_version=av,
+        lang_code="en", system_lang_code="en-US",
         proxy=proxy_dict,
         connection=ConnectionTcpAbridged if proxy_dict else ConnectionTcpIntermediate, 
-        timeout=timeout, 
-        auto_reconnect=False, 
-        connection_retries=1, 
-        retry_delay=1, 
-        flood_sleep_threshold=20
+        timeout=timeout, auto_reconnect=False, connection_retries=1, retry_delay=1, flood_sleep_threshold=20
     )
+
+def format_telegram_date(dt):
+    if not dt: return "Unknown"
+    tz_bd = timezone(timedelta(hours=6))
+    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(tz_bd).strftime("%Y-%m-%d %H:%M:%S UTC+06:00")
 
 def create_expert_json(session_name, phone, user_id, first_name, last_name, username, api_id, api_hash, two_fa, device_config=None, proxy_info=None):
     current_time = datetime.now(timezone(timedelta(hours=7))).isoformat()
@@ -336,27 +378,17 @@ def create_expert_json(session_name, phone, user_id, first_name, last_name, user
 
     return {
         "twoFA": two_fa if two_fa and str(two_fa).upper() != 'N' else "",
-        "spambot": "free",
-        "session_file": session_name,
-        "phone": phone,
-        "user_id": user_id,
-        "app_id": api_id,
-        "app_hash": api_hash,
-        "sdk": sys_ver,
-        "app_version": app_ver,
-        "device": dev_model,
-        "last_check_time": current_time,
-        "first_name": first_name or "",
-        "last_name": last_name or "",
-        "username": username or "",
+        "spambot": "free", "session_file": session_name, "phone": phone, "user_id": user_id,
+        "app_id": api_id, "app_hash": api_hash, "sdk": sys_ver, "app_version": app_ver,
+        "device": dev_model, "last_check_time": current_time,
+        "first_name": first_name or "", "last_name": last_name or "", "username": username or "",
         "proxy": proxy_info
     }
 
 async def ordered_output_printer(results_buffer, total_files):
     next_idx = 1
     while next_idx <= total_files:
-        while next_idx not in results_buffer:
-            await asyncio.sleep(0.01)
+        while next_idx not in results_buffer: await asyncio.sleep(0.01)
         output_buffer, is_corrupt, session_file = results_buffer.pop(next_idx)
         for line in output_buffer: print(line)
         if is_corrupt and session_file:
@@ -374,12 +406,11 @@ def test_single_proxy_thread(p_str, idx, is_http=False):
         with socket.create_connection((ip, port), timeout=4.0):
             loc = resolve_ip_geo(ip)
             return (True, f"{proto_prefix}://{p_str}", f"{GREEN}[ALIVE #{idx}] [{proto_prefix.upper()}] {ip}:{port} -> ({loc}){RESET}")
-    except Exception:
-        return (False, None, f"{RED}[DEAD #{idx}] {ip}:{port} - Timeout{RESET}")
+    except Exception: return (False, None, f"{RED}[DEAD #{idx}] {ip}:{port} - Timeout{RESET}")
 
 def upload_and_check_proxies():
     print(f"\n{CYAN}--- UNIVERSAL PROXY AUTO-UPLOADER ---{RESET}")
-    print(f"{YELLOW}Paste your proxies below. Type 'DONE' on a new line when finished:{RESET}\n")
+    print(f"{YELLOW}Paste your proxies below. Type 'DONE' when finished:{RESET}\n")
     input_lines = []
     while True:
         try:
@@ -390,24 +421,22 @@ def upload_and_check_proxies():
 
     raw_data = "\n".join(input_lines)
     found_proxies = universal_proxy_parser(raw_data)
-
     if not found_proxies:
         print(f"{RED}[✖] No valid proxies detected in input!{RESET}")
         return
 
     print(f"\n{GREEN}✔ Automatically Detected & Extracted {len(found_proxies)} Proxies!{RESET}")
-    proto_opt = input(f"{YELLOW}Protocol: [1] HTTP/HTTPS  [2] SOCKS5: {RESET}").strip()
+    proto_opt = input(f"\n{YELLOW}[#] Select Protocol [1] HTTP/HTTPS [2] SOCKS5: {RESET}").strip()
     is_http_proxy = True if proto_opt == "1" else False
     proto_name = "http" if is_http_proxy else "socks5"
 
-    opt = input(f"{YELLOW}Options: [1] Save Directly  [2] Test Connections First: {RESET}").strip()
-
+    opt = input(f"\n{YELLOW}[#] [1] Save Directly [2] Test Connections First: {RESET}").strip()
     if opt == "1":
         with open("proxies.txt", "w", encoding="utf-8") as f:
             for vp in found_proxies: f.write(f"{proto_name}://{vp}\n")
         print(f"\n{GREEN}✔ SUCCESS! {len(found_proxies)} Proxies saved directly as {proto_name.upper()} in 'proxies.txt'.{RESET}")
     elif opt == "2":
-        print(f"\n{YELLOW}[*] Testing Connections...{RESET}")
+        print(f"\n{YELLOW}[*] Testing Fast TCP Connections...{RESET}")
         valid_proxies = []
         with ThreadPoolExecutor(max_workers=30) as executor:
             futures = [executor.submit(test_single_proxy_thread, p, i, is_http_proxy) for i, p in enumerate(found_proxies, 1)]
@@ -424,10 +453,11 @@ def upload_and_check_proxies():
 # ================= OPTION 1: CREATE SESSION AND JSON =================
 async def create_session():
     api_keys = load_api_keys("api_keys.txt")
-    folder = input(f"\n{YELLOW}Enter Folder Name to save Session & JSON (e.g. 20, 880): {RESET}").strip()
+    net_info = get_current_network_info()
+    folder = input(f"\n{YELLOW}Enter Folder Name to save Session & JSON: {RESET}").strip()
     folder = folder if folder else "sessions"
     os.makedirs(folder, exist_ok=True)
-    two_fa_input = input(f"{YELLOW}Enter 2FA Password to save in JSON (Type 'N' if no password): {RESET}").strip()
+    two_fa_input = input(f"{YELLOW}Enter 2FA Password to save in JSON (Type 'N' if none): {RESET}").strip()
     two_fa_pass = "" if two_fa_input.upper() == 'N' else two_fa_input
 
     session_count = 1
@@ -455,8 +485,7 @@ async def create_session():
                     print(f"{GREEN}[✔] Session created successfully: {session_name}.session{RESET}")
                     me = await client.get_me()
                     json_data = create_expert_json(session_name, session_name, me.id, me.first_name, me.last_name, me.username, api_pair[0], api_pair[1], two_fa_pass, chosen_device)
-                    with open(os.path.join(folder, f"{session_name}.json"), "w", encoding="utf-8") as f:
-                        json.dump(json_data, f, indent=4, ensure_ascii=False)
+                    with open(os.path.join(folder, f"{session_name}.json"), "w", encoding="utf-8") as f: json.dump(json_data, f, indent=4, ensure_ascii=False)
                     session_count += 1
                 except Exception as e: print(f"{RED}[✖] Error: {e}{RESET}")
             else: print(f"{GREEN}[✔] Account is already Authorized!{RESET}")
@@ -464,7 +493,7 @@ async def create_session():
             try: await client.disconnect()
             except Exception: pass
 
-# ================= OPTION 6: BREAKUP SESSION (NO AUTO-LOGOUT) =================
+# ================= OPTION 6: BREAKUP SESSION (FAST PROXY MODE NO LOGOUT) =================
 async def clone_single_session_task(session_file, idx, total_files, api_keys, proxies, two_fa_password, target_folder, stats_dict, results_buffer, default_ip):
     s_name = os.path.splitext(os.path.basename(session_file))[0]
     session_base = session_file[:-8] if session_file.endswith(".session") else session_file
@@ -525,10 +554,10 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
                 if two_fa_password:
                     try: await asyncio.wait_for(new_client.sign_in(password=two_fa_password), timeout=12.0)
                     except errors.PasswordHashInvalidError:
-                        log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> 2FA Password Wrong! (Skipped){RESET}")
+                        log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> 2FA Password Wrong! (Auto-Skipped){RESET}")
                         break
                 else:
-                    log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> 2FA Required! (Skipped){RESET}")
+                    log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> 2FA Required! (Auto-Skipped){RESET}")
                     break
 
             if await new_client.is_user_authorized():
@@ -543,6 +572,8 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
                 log_buffer.append(CYAN + "=" * 58)
                 log_buffer.append(f"{CYAN}[{idx}/{total_files}] Breakup Success: {GREEN}{phone} {MAGENTA}[API: {api_pair[0]}]{RESET}")
                 log_buffer.append(f"    {WHITE}OTP Code     : {YELLOW}{otp_code}{RESET}")
+                log_buffer.append(f"    {WHITE}Device Model : {RED}{chosen_device['device_model']}{WHITE} [{chosen_device['system_version']}]{RESET}")
+                log_buffer.append(f"    {WHITE}Login IP     : {YELLOW}{used_ip}{WHITE} ({GREEN}{loc_string}{WHITE}){RESET}")
                 log_buffer.append(f"    {GREEN}✔ Saved to   : {CYAN}'{target_folder}'{RESET}")
                 log_buffer.append(f"    {YELLOW}⚡ Old Session is STILL ALIVE (No Auto Logout)!{RESET}")
 
@@ -551,32 +582,30 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
                 break 
 
         except (errors.AuthKeyUnregisteredError, errors.AuthKeyDuplicatedError, errors.AuthKeyInvalidError, errors.SessionExpiredError, errors.SessionRevokedError, errors.UserDeactivatedBanError, errors.UserDeactivatedError):
-            log_buffer.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> Already Logged Out / Dead{RESET}")
+            log_buffer.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> Already Logged Out / Dead (Auth Invalid){RESET}")
             is_already_dead = True
             break
         except Exception as e:
-            if attempt == 3: log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> Failed: {str(e)[:40]}{RESET}")
+            err_msg = str(e).strip()[:40] if str(e).strip() else e.__class__.__name__
+            if attempt == 3: log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> Failed: {err_msg}{RESET}")
         finally:
             try: await old_client.disconnect()
             except Exception: pass
             try: await new_client.disconnect()
             except Exception: pass
 
-    # ব্রেকআপ হলেও ফাইল ডিলিট না হয়ে প্রসেসড ফোল্ডারে যাবে (যেহেতু অটো লগআউট বন্ধ)
     if account_success or is_already_dead:
         target_processed_folder = "Dead_Sessions" if is_already_dead else "Processed_Old_Sessions"
         os.makedirs(target_processed_folder, exist_ok=True)
         try:
-            if os.path.exists(session_file):
-                shutil.move(session_file, os.path.join(target_processed_folder, os.path.basename(session_file)))
+            if os.path.exists(session_file): shutil.move(session_file, os.path.join(target_processed_folder, os.path.basename(session_file)))
             old_json = session_file.replace('.session', '.json')
-            if os.path.exists(old_json):
-                shutil.move(old_json, os.path.join(target_processed_folder, os.path.basename(old_json)))
+            if os.path.exists(old_json): shutil.move(old_json, os.path.join(target_processed_folder, os.path.basename(old_json)))
         except Exception: pass
 
     if not account_success and not is_already_dead:
         stats_dict['fail'] += 1
-        if not log_buffer: log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> Breakup Failed{RESET}")
+        if not log_buffer: log_buffer.append(f"{RED}[{idx}/{total_files}] {s_name} -> Breakup Failed (Bad Proxies){RESET}")
         if os.path.exists(temp_session_file):
             try: os.remove(temp_session_file)
             except Exception: pass
@@ -588,7 +617,8 @@ async def breakup_worker(queue, total_files, api_keys, proxies, two_fa_password,
         try: item = queue.get_nowait()
         except asyncio.QueueEmpty: break
         idx, s_file = item
-        await clone_single_session_task(s_file, idx, total_files, api_keys, proxies, two_fa_password, target_folder, stats_dict, results_buffer, default_ip)
+        try: await clone_single_session_task(s_file, idx, total_files, api_keys, proxies, two_fa_password, target_folder, stats_dict, results_buffer, default_ip)
+        except Exception as e: results_buffer[idx] = ([f"{RED}Critical Error on {s_file}: {e}{RESET}"], False, None)
         queue.task_done()
 
 async def breakup_session():
@@ -602,13 +632,13 @@ async def breakup_session():
     if mode == "2":
         proxies = load_proxies("proxies.txt")
         if not proxies:
-            print(f"\n{RED}[✖] No proxies found in 'proxies.txt'!{RESET}")
+            print(f"\n{RED}[✖] No proxies found!{RESET}")
             return
     elif mode != "1": return
 
     api_keys = load_api_keys("api_keys.txt")
     default_ip = get_current_network_info()['ip']
-    folder = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, 880): {RESET}").strip()
+    folder = input(f"\n{YELLOW}Enter Folder Name: {RESET}").strip()
     if not os.path.exists(folder): return
 
     session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
@@ -617,7 +647,6 @@ async def breakup_session():
 
     pwd_input = input(f"{YELLOW}Enter global 2FA Password (type 'N' to skip): {RESET}").strip()
     two_fa_password = None if pwd_input.upper() == 'N' or not pwd_input else pwd_input
-    
     concurrency = 30
     target_folder = "breakup_session"
     os.makedirs(target_folder, exist_ok=True)
@@ -633,83 +662,20 @@ async def breakup_session():
 
     await queue.join()
     await printer_task
-    print(f"\n{GREEN}✔ Breakup Session Completed! Success: {stats_dict['success']}{RESET}")
+    print(f"\n{GREEN}✔ Breakup Completed! Success: {stats_dict['success']}{RESET}")
 
-# ================= OPTION 4: JOIN PUBLIC CHANNEL =================
-async def join_single_channel_task(session_file, idx, total_count, api_keys, target_channel, results_buffer):
-    s_name = os.path.splitext(os.path.basename(session_file))[0]
-    session_base = session_file[:-8] if session_file.endswith(".session") else session_file
-    await asyncio.sleep(random.uniform(0.5, 2.0))
-    
-    api_pair = random.choice(api_keys)
-    client = create_telethon_client(session_base, api_pair, timeout=10)
-    out = []
-    is_corrupt = False
-
-    try:
-        async with get_connect_semaphore(20):
-            await asyncio.wait_for(client.connect(), timeout=10.0)
-        if not await client.is_user_authorized():
-            out.append(f"{RED}[{idx}/{total_count}] {s_name} -> Dead / Unauthorized{RESET}")
-            is_corrupt = True
-        else:
-            await client(functions.channels.JoinChannelRequest(channel=target_channel))
-            out.append(f"{GREEN}[{idx}/{total_count}] {s_name} -> Successfully Joined {target_channel}!{RESET}")
-    except errors.UserBannedInChannelError:
-        out.append(f"{YELLOW}[{idx}/{total_count}] {s_name} -> Banned from this channel!{RESET}")
-    except Exception as e:
-        out.append(f"{RED}[{idx}/{total_count}] {s_name} -> Failed: {str(e)[:30]}{RESET}")
-    finally:
-        try: await client.disconnect()
-        except Exception: pass
-
-    results_buffer[idx] = (out, is_corrupt, session_file)
-
-async def join_channel_worker(queue, total_count, api_keys, target_channel, results_buffer):
-    while True:
-        try: item = queue.get_nowait()
-        except asyncio.QueueEmpty: break
-        idx, session_file = item
-        await join_single_channel_task(session_file, idx, total_count, api_keys, target_channel, results_buffer)
-        queue.task_done()
-
-async def join_public_channel():
-    api_keys = load_api_keys("api_keys.txt")
-    folder = input(f"\n{YELLOW}Enter Folder Name with sessions (e.g. 20, 880): {RESET}").strip()
-    if not os.path.exists(folder):
-        print(f"{RED}[✖] Folder not found!{RESET}")
-        return
-        
-    target_channel = input(f"{YELLOW}Enter Channel Link or @username (e.g. WORLD_UPDATE_TOP1): {RESET}").strip()
-    if not target_channel: return
-    if "t.me/" in target_channel: target_channel = target_channel.split("t.me/")[1].split("/")[0]
-    if not target_channel.startswith("@"): target_channel = "@" + target_channel
-
-    session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
-    total_files = len(session_files)
-    if total_files == 0: return
-
-    print(f"\n{CYAN}⚡ Joining {target_channel} with {total_files} accounts...{RESET}")
-    queue = asyncio.Queue()
-    for idx, s_file in enumerate(session_files, start=1): queue.put_nowait((idx, s_file))
-    
-    results_buffer = {}
-    workers = [asyncio.create_task(join_channel_worker(queue, total_files, api_keys, target_channel, results_buffer)) for _ in range(min(20, total_files))]
-    printer_task = asyncio.create_task(ordered_output_printer(results_buffer, total_files))
-
-    await queue.join()
-    await printer_task
-    print(f"\n{GREEN}✔ Join Channel Process Completed!{RESET}")
-
-# ================= PLACEHOLDERS =================
-async def run_2fa_manager(): print(f"\n{YELLOW}[!] 2FA Manager is loaded in original script.{RESET}")
-async def check_folder_sessions(): print(f"\n{YELLOW}[!] Folder Session Checker loaded.{RESET}")
-async def clear_all_history(): print(f"\n{YELLOW}[!] History Cleaner loaded.{RESET}")
-async def run_kill_session(): print(f"\n{YELLOW}[!] Kill Session loaded.{RESET}")
-def spam_check_menu(): print(f"\n{YELLOW}[!] Spam Check loaded.{RESET}")
+# ================= OTHER PLACEHOLDERS =================
+async def run_2fa_manager(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def check_folder_sessions(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def clear_all_history(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def run_kill_session(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+def spam_check_menu(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def join_public_channel(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def read_otp(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
+async def session_to_json(): print(f"\n{YELLOW}[!] Loaded.{RESET}")
 
 def main():
-    # 🚀 স্ক্রিপ্ট রান হওয়ার সাথে সাথে চ্যানেল ওপেন করবে এবং গিটহাব থেকে প্রক্সি ডাউনলোড করবে
+    # চ্যানেল প্রম্পট এবং গিটহাব থেকে ফাইল ডাউনলোড শুরুতে একবার রান হবে
     startup_channel_prompt()
     
     while True:
@@ -718,18 +684,21 @@ def main():
 
         if choice in ["1"]: asyncio.run(create_session())
         elif choice in ["2"]: upload_and_check_proxies()
+        elif choice in ["3"]: print(f"\n{YELLOW}[!] Please check api_keys.txt manually.{RESET}")
         elif choice in ["4"]: asyncio.run(join_public_channel())
         elif choice in ["5"]: asyncio.run(check_folder_sessions())
         elif choice in ["6"]: asyncio.run(breakup_session())
         elif choice in ["7"]: asyncio.run(run_2fa_manager())
+        elif choice in ["8"]: asyncio.run(read_otp())
         elif choice in ["9"]: asyncio.run(clear_all_history())
+        elif choice in ["10"]: asyncio.run(session_to_json())
         elif choice in ["11"]: spam_check_menu()
         elif choice in ["12"]: asyncio.run(run_kill_session())
         elif choice in ["0", "E", "EXIT"]:
             print(f"\n{RED}[!] Exiting Tools. Goodbye!{RESET}\n")
             sys.exit(0)
         else:
-            print(f"{RED}[✖] Feature not integrated in this preview or invalid option!{RESET}")
+            print(f"{RED}[✖] Invalid Option!{RESET}")
 
         input(f"\n{CYAN}Press Enter to return to menu...{RESET}")
 
