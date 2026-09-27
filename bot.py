@@ -14,12 +14,13 @@ import urllib.request
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
 
-# PYTHON 3.13+ COMPATIBILITY FIX
+# ================= PYTHON 3.13+ COMPATIBILITY FIX =================
 if 'imghdr' not in sys.modules:
     imghdr_mock = types.ModuleType('imghdr')
     imghdr_mock.what = lambda file, h=None: 'jpeg'
     sys.modules['imghdr'] = imghdr_mock
 
+# ================= AUTO-INSTALLER FOR REQUIRED LIBRARIES =================
 try:
     import telethon
     import python_socks
@@ -43,7 +44,6 @@ init(autoreset=True)
 GITHUB_PROXY_URL = "https://raw.githubusercontent.com/wptg880-sketch/wp_tg/main/proxies.txt"
 GITHUB_API_URL = "https://raw.githubusercontent.com/wptg880-sketch/wp_tg/main/api_keys.txt"
 
-# Default API Key (Fallback if GitHub fails)
 DEFAULT_API_ID = 25762761
 DEFAULT_API_HASH = "f6712ac15fa56c713451eede724261eb"
 
@@ -57,20 +57,24 @@ except PermissionError:
     BASE_DIR = "termux_sessions"
     os.makedirs(BASE_DIR, exist_ok=True)
 
+# ================= AUTO NAMES LIST =================
+AUTO_NAMES_LIST = [
+    "RK", "ER", "RJ", "JEB", "Alex", "Sam", "Max", "Leo", "Ray", "Tom", "Bob", "Tim", "Jay", "Roy", 
+    "Jon", "Dan", "Eli", "Ian", "Mac", "Abe", "Ben", "Cal", "Hal", "Sal", "Vic", "Zak", "Kai", "Jax", 
+    "Fox", "Rex", "Ash", "Cid", "Dax", "Gus", "Kip", "Lex", "Ned", "Paz", "Taj", "Van", "Wes", "Zed",
+    "John", "David", "Michael", "James", "Robert", "William", "Mary", "Patricia", "Jennifer", "Linda"
+]
+
 # ================= PREMIUM DESKTOP MODELS =================
 DESKTOP_DEVICES = [
     {"device_model": "Windows 10 x64", "system_version": "10.0.19045", "app_version": "4.8.4 x64"},
     {"device_model": "Windows 11 x64", "system_version": "10.0.22621", "app_version": "4.11.2 x64"},
     {"device_model": "Ubuntu 22.04 LTS", "system_version": "Linux 5.15", "app_version": "4.9.1 x64"},
     {"device_model": "MacBook Pro M1", "system_version": "macOS 13.5", "app_version": "4.10.0 arm64"},
-    {"device_model": "Windows 8.1 x64", "system_version": "6.3.9600", "app_version": "4.7.1 x64"},
-    {"device_model": "Linux Mint 21", "system_version": "Linux 5.15", "app_version": "4.9.2 x64"}
+    {"device_model": "Windows 8.1 x64", "system_version": "6.3.9600", "app_version": "4.7.1 x64"}
 ]
 
-# Geo-location cache
 GEO_CACHE = {}
-
-# ================= Asyncio Event Loop Safe State =================
 global_state = {'print_lock': None, 'semaphore': None, 'loop': None}
 
 def get_print_lock():
@@ -89,7 +93,6 @@ def get_connect_semaphore(limit=40):
         global_state['loop'] = loop
     return global_state['semaphore']
 
-# ================= ANSI COLOR CODES =================
 CYAN = Fore.CYAN + Style.BRIGHT
 RED = Fore.RED + Style.BRIGHT
 GREEN = Fore.GREEN + Style.BRIGHT
@@ -118,7 +121,7 @@ def get_github_apis():
     if GITHUB_API_URL:
         try:
             req = urllib.request.Request(GITHUB_API_URL, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=7.0) as resp:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
                 data = resp.read().decode('utf-8')
                 for line in data.split('\n'):
                     match = re.search(r'(\d{5,10})\s*[:\s,\t]+\s*([a-fA-F0-9]{32})', line)
@@ -178,7 +181,6 @@ def get_current_network_info():
     except Exception:
         return {'ip': 'Local IP', 'location': 'Local Network', 'isp': 'Direct', 'status': False}
 
-# ================= CLEAN UI MENU =================
 def show_banner():
     clear_screen()
     net = get_current_network_info()
@@ -251,6 +253,17 @@ def move_session_files(session_file_path, target_dir_name):
             if os.path.exists(j_dest): os.remove(j_dest)
             shutil.move(json_file, j_dest)
     except Exception: pass
+
+def update_json_2fa(session_file, new_2fa):
+    json_file = session_file.replace('.session', '.json')
+    if os.path.exists(json_file):
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            data['twoFA'] = new_2fa
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+        except Exception: pass
 
 def create_telethon_client(session_base, api_pair, timeout=12, device_config=None, proxy_info=None):
     proxy_dict = None
@@ -340,11 +353,11 @@ async def fast_check_session_task(session_file, idx, total_count, api_keys, prox
             # 2. Check if Alive or Frozen (by sending 'hi' to Saved Messages)
             if not isinstance(me_res, Exception) and me_res:
                 try:
-                    # Send message to oneself
+                    # Send message to oneself to verify send ability
                     msg = await asyncio.wait_for(client.send_message('me', 'hi'), timeout=7.0)
-                    await client.delete_messages('me', [msg.id], revoke=True) # Clean up
+                    await client.delete_messages('me', [msg.id]) # Clean up
                     is_alive = True
-                except Exception as e:
+                except Exception:
                     # If sending fails, consider it Frozen
                     is_frozen = True
                     is_alive = False
@@ -359,11 +372,8 @@ async def fast_check_session_task(session_file, idx, total_count, api_keys, prox
                     auth_info = None
                     if not isinstance(auth_res, Exception) and auth_res and getattr(auth_res, 'authorizations', None):
                         for a in auth_res.authorizations:
-                            if getattr(a, 'current', False):
-                                auth_info = a
-                                break
-                        if not auth_info and len(auth_res.authorizations) > 0:
-                            auth_info = auth_res.authorizations[0]
+                            if getattr(a, 'current', False): auth_info = a; break
+                        if not auth_info and len(auth_res.authorizations) > 0: auth_info = auth_res.authorizations[0]
 
                     if auth_info:
                         device_model = getattr(auth_info, 'device_model', 'Unknown')
@@ -487,8 +497,7 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
     temp_session_file = f"{target_session_base}.session"
 
     log_buffer = []
-    account_success = False
-    is_already_dead = False
+    account_success, is_already_dead = False, False
     
     await asyncio.sleep(random.uniform(0.1, 0.8)) 
 
@@ -502,7 +511,6 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
             except Exception: pass
 
         proxy_timeout = 7.0 if chosen_proxy else 10.0
-
         old_client = create_telethon_client(session_base, api_pair, timeout=8)
         new_client = create_telethon_client(target_session_base, api_pair, timeout=proxy_timeout, device_config=chosen_device, proxy_info=chosen_proxy)
 
@@ -580,7 +588,6 @@ async def clone_single_session_task(session_file, idx, total_files, api_keys, pr
             try: await new_client.disconnect()
             except: pass
 
-    # Move processed/dead files to their respective folders
     if account_success or is_already_dead:
         dest_folder = "Dead_Sessions" if is_already_dead else "Processed_Old_Sessions"
         move_session_files(session_file, dest_folder)
@@ -599,8 +606,7 @@ async def breakup_worker(queue, total_files, api_keys, proxies, two_fa_password,
         try: item = queue.get_nowait()
         except asyncio.QueueEmpty: break
         idx, s_file = item
-        try:
-            await clone_single_session_task(s_file, idx, total_files, api_keys, proxies, two_fa_password, target_folder, stats_dict, results_buffer, default_ip)
+        try: await clone_single_session_task(s_file, idx, total_files, api_keys, proxies, two_fa_password, target_folder, stats_dict, results_buffer, default_ip)
         except Exception: results_buffer[idx] = []
         queue.task_done()
 
@@ -625,7 +631,7 @@ async def breakup_session():
     folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
     folder = os.path.join(BASE_DIR, folder_input)
     if not os.path.exists(folder):
-        print(f"{RED}[✖] Folder '{folder_input}' not found in termux path!{RESET}")
+        print(f"{RED}[✖] Folder '{folder_input}' not found in {BASE_DIR}!{RESET}")
         return
 
     session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
@@ -662,6 +668,177 @@ async def breakup_session():
     print(f"\n{GREEN}✔ Breakup Completed! Saved in 'Breakup_Success' folder.{RESET}")
     print(f"{GREEN}[*] Success: {stats_dict['success']} {RED}| Failed/Skipped: {stats_dict['fail']}{RESET}")
 
+
+# ================= 7: 2FA MANAGER (CHANGE/DISABLE/RESET) =================
+async def check_2fa_task(session_file, idx, total_files, api_keys, proxies, mode, old_pwd, new_pwd, stats, results_buffer):
+    s_name = os.path.splitext(os.path.basename(session_file))[0]
+    session_base = session_file[:-8] if session_file.endswith(".session") else session_file
+    
+    out = []
+    api_pair = random.choice(api_keys)
+    chosen_proxy = random.choice(proxies) if proxies else None
+    timeout_sec = 8.0 if chosen_proxy else 10.0
+
+    client = create_telethon_client(session_base, api_pair, timeout=timeout_sec, proxy_info=chosen_proxy)
+    
+    await asyncio.sleep(random.uniform(0.5, 1.5))
+
+    try:
+        async with get_connect_semaphore(20):
+            await asyncio.wait_for(client.connect(), timeout=timeout_sec)
+
+        if not await client.is_user_authorized():
+            out.append(f"{RED}[{idx}/{total_files}] {s_name} -> Unauthorized / Logged Out{RESET}")
+            stats['error'] += 1
+            results_buffer[idx] = out
+            return
+
+        pwd_info = await client(functions.account.GetPasswordRequest())
+        
+        # ---- Mode 1: Change 2FA ----
+        if mode == "1":
+            if pwd_info.has_password:
+                try:
+                    await client.edit_2fa(current_password=old_pwd, new_password=new_pwd)
+                    update_json_2fa(session_file, new_pwd)
+                    out.append(f"{GREEN}[{idx}/{total_files}] {s_name} -> 2FA Changed to '{new_pwd}'!{RESET}")
+                    move_session_files(session_file, f"Pass_{new_pwd}")
+                    stats['success'] += 1
+                except errors.PasswordHashInvalidError:
+                    out.append(f"{RED}[{idx}/{total_files}] {s_name} -> Wrong Current Password!{RESET}")
+                    stats['error'] += 1
+            else:
+                await client.edit_2fa(new_password=new_pwd)
+                update_json_2fa(session_file, new_pwd)
+                out.append(f"{GREEN}[{idx}/{total_files}] {s_name} -> New 2FA Set to '{new_pwd}'!{RESET}")
+                move_session_files(session_file, f"Pass_{new_pwd}")
+                stats['success'] += 1
+
+        # ---- Mode 2: Disable 2FA ----
+        elif mode == "2":
+            if pwd_info.has_password:
+                try:
+                    await client.edit_2fa(current_password=old_pwd, new_password=None)
+                    update_json_2fa(session_file, "")
+                    out.append(f"{GREEN}[{idx}/{total_files}] {s_name} -> 2FA Successfully Disabled!{RESET}")
+                    stats['success'] += 1
+                except errors.PasswordHashInvalidError:
+                    out.append(f"{RED}[{idx}/{total_files}] {s_name} -> Wrong Current Password!{RESET}")
+                    stats['error'] += 1
+            else:
+                out.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> No 2FA password exists.{RESET}")
+                stats['success'] += 1
+
+        # ---- Mode 3: Reset 2FA ----
+        elif mode == "3":
+            if not pwd_info.has_password:
+                out.append(f"{YELLOW}[{idx}/{total_files}] {s_name} -> No 2FA password to reset.{RESET}")
+                stats['success'] += 1
+            else:
+                try:
+                    await client(functions.account.ResetPasswordRequest())
+                    update_json_2fa(session_file, "")
+                    out.append(f"{GREEN}[{idx}/{total_files}] {s_name} -> Password Reset Instantly!{RESET}")
+                    stats['success'] += 1
+                except errors.ResetWaitError as e:
+                    days = e.seconds // 86400
+                    hours = (e.seconds % 86400) // 3600
+                    out.append(f"{MAGENTA}[{idx}/{total_files}] {s_name} -> Reset Pending: {days} Days, {hours} Hours left{RESET}")
+                    move_session_files(session_file, "Reset_Pending")
+                    stats['pending'] += 1
+
+    except Exception as ex:
+        err_msg = str(ex).strip()[:40] if str(ex).strip() else ex.__class__.__name__
+        out.append(f"{RED}[{idx}/{total_files}] {s_name} -> Failed: {err_msg}{RESET}")
+        stats['error'] += 1
+    finally:
+        try: await client.disconnect()
+        except Exception: pass
+
+    results_buffer[idx] = out
+
+async def two_fa_worker(queue, total_files, api_keys, proxies, mode, old_pwd, new_pwd, stats, results_buffer):
+    while True:
+        try: item = queue.get_nowait()
+        except asyncio.QueueEmpty: break
+        idx, session_file = item
+        await check_2fa_task(session_file, idx, total_files, api_keys, proxies, mode, old_pwd, new_pwd, stats, results_buffer)
+        queue.task_done()
+
+async def run_2fa_manager():
+    clear_screen()
+    print(CYAN + "╔══════════════════════════════════════════════════╗")
+    print(CYAN + "║" + MAGENTA + "             2 F A   M A N A G E R                " + CYAN + "║")
+    print(CYAN + "╚══════════════════════════════════════════════════╝")
+    
+    print(f"\n{WHITE}Select Network Mode:{RESET}")
+    print(f"{CYAN}[1] Local IP / Direct Internet{RESET}")
+    print(f"{CYAN}[2] Use Proxies from GitHub{RESET}")
+    net_mode = input(f"{YELLOW}[#] Option: {RESET}").strip()
+    
+    proxies = []
+    if net_mode == "2":
+        proxies = load_proxies("proxies.txt")
+        if not proxies:
+            print(f"{RED}[✖] No proxies found in proxies.txt!{RESET}")
+            return
+
+    folder_input = input(f"\n{YELLOW}Enter Folder Name (e.g. 20, +62): {RESET}").strip()
+    folder = os.path.join(BASE_DIR, folder_input)
+    if not os.path.exists(folder):
+        print(f"{RED}[✖] Folder '{folder_input}' does not exist in {BASE_DIR}!{RESET}")
+        return
+
+    session_files = sorted(glob.glob(os.path.join(folder, "*.session")))
+    total_files = len(session_files)
+    if total_files == 0:
+        print(f"{RED}[✖] No sessions found!{RESET}")
+        return
+
+    print(f"\n{WHITE}Select 2FA Action:{RESET}")
+    print(f"{CYAN}[1] Change 2FA (Create Folder with New Pass){RESET}")
+    print(f"{CYAN}[2] Disable 2FA (Remove Password){RESET}")
+    print(f"{CYAN}[3] Reset 2FA (Check Pending Days & Move){RESET}")
+    print(f"{CYAN}[0] Back to Main Menu{RESET}")
+    mode = input(f"{YELLOW}[#] Option: {RESET}").strip()
+    
+    if mode not in ["1", "2", "3"]: return
+
+    old_pwd, new_pwd = "", ""
+    if mode == "1":
+        old_pwd = input(f"{YELLOW}Enter Current 2FA Password (leave empty if none): {RESET}").strip()
+        new_pwd = input(f"{YELLOW}Enter NEW 2FA Password: {RESET}").strip()
+        print(f"{WHITE}[*] Accounts will be moved to: {GREEN}Pass_{new_pwd}{RESET}")
+    elif mode == "2":
+        old_pwd = input(f"{YELLOW}Enter Current 2FA Password: {RESET}").strip()
+    elif mode == "3":
+        print(f"{WHITE}[*] Pending reset accounts will move to: {GREEN}Reset_Pending{RESET}")
+
+    api_keys = get_github_apis()
+    w_input = input(f"\n{YELLOW}Worker Count [Recommended: 15-30]: {RESET}").strip()
+    concurrency = int(w_input) if w_input.isdigit() and 1 <= int(w_input) <= 50 else 20
+
+    print(f"\n{CYAN}⚡ Starting 2FA Manager on {total_files} accounts...{RESET}\n")
+
+    queue = asyncio.Queue()
+    for idx, s_file in enumerate(session_files, start=1): queue.put_nowait((idx, s_file))
+
+    stats = {'success': 0, 'pending': 0, 'error': 0}
+    results_buffer = {}
+
+    workers = [asyncio.create_task(two_fa_worker(queue, total_files, api_keys, proxies, mode, old_pwd, new_pwd, stats, results_buffer)) for _ in range(min(concurrency, total_files))]
+    printer_task = asyncio.create_task(ordered_output_printer(results_buffer, total_files))
+
+    await queue.join()
+    await printer_task
+
+    print(CYAN + "=" * 58)
+    if mode == "3":
+        print(f"\n{GREEN}✔ Completed! Success: {stats['success']} | Pending: {stats['pending']} | Errors: {stats['error']}{RESET}")
+    else:
+        print(f"\n{GREEN}✔ Completed! Success: {stats['success']} | Errors: {stats['error']}{RESET}")
+
+# ================= OTHER MODULES (CREATE, PROXY, CLEAN, KILL) =================
 def api_keys_info():
     clear_screen()
     print(f"\n{GREEN}✔ API Keys are strictly auto-fetched from your GitHub URL:{RESET}")
@@ -671,10 +848,8 @@ def api_keys_info():
 def check_proxies():
     proxies = load_proxies("proxies.txt")
     clear_screen()
-    if proxies:
-        print(f"\n{GREEN}✔ Loaded {len(proxies)} proxies fetched from GitHub.{RESET}")
-    else:
-        print(f"\n{RED}✖ No proxies found. Ensure {GITHUB_PROXY_URL} is valid.{RESET}")
+    if proxies: print(f"\n{GREEN}✔ Loaded {len(proxies)} proxies fetched from GitHub.{RESET}")
+    else: print(f"\n{RED}✖ No proxies found. Ensure {GITHUB_PROXY_URL} is valid.{RESET}")
 
 async def create_session():
     api_keys = get_github_apis()
@@ -729,11 +904,12 @@ def main():
         elif choice in ["3"]: api_keys_info()
         elif choice in ["5"]: asyncio.run(check_folder_sessions())
         elif choice in ["6"]: asyncio.run(breakup_session())
+        elif choice in ["7"]: asyncio.run(run_2fa_manager())
         elif choice in ["0", "E", "EXIT"]:
             print(f"\n{RED}[!] Exiting Tools. Goodbye!{RESET}\n")
             sys.exit(0)
         else:
-            print(f"{RED}[✖] Invalid Option or Feature coming soon!{RESET}")
+            print(f"{RED}[✖] Invalid Option or Feature is under construction!{RESET}")
         input(f"\n{CYAN}Press Enter to return to menu...{RESET}")
 
 if __name__ == "__main__":
